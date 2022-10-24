@@ -71,11 +71,92 @@ void MotorMove::moveBack(int pulse) {
 }
 //置零
 void MotorMove::setZero() {
-
+	if (x_axis == 1) {
+		USB1020_SetLP(hDevice, USB1020_XAXIS, 0);
+		USB1020_SetEP(hDevice, USB1020_XAXIS, 0);
+	}
+	if (y_axis == 1) {
+		USB1020_SetLP(hDevice, USB1020_YAXIS, 0);
+		USB1020_SetEP(hDevice, USB1020_YAXIS, 0);
+	}
+	if (z_axis == 1) {
+		USB1020_SetLP(hDevice, USB1020_ZAXIS, 0);
+		USB1020_SetEP(hDevice, USB1020_ZAXIS, 0);
+	}
 }
 //归零
 void MotorMove::backToZero() {
+	LONG x_LP = USB1020_ReadLP(hDevice, USB1020_XAXIS);//读出三个轴的逻辑位置
+	LONG y_LP = USB1020_ReadLP(hDevice, USB1020_YAXIS);
+	LONG z_LP = USB1020_ReadLP(hDevice, USB1020_ZAXIS);
 
+	if (x_axis == 1) {
+		LC.LV_DV = USB1020_DV;
+		LC.PulseMode = USB1020_CPDIR;
+		LC.Line_Curve = USB1020_LINE;
+		
+		DL.Multiple = 10;
+		DL.Acceleration = 4000;
+		DL.Deceleration = 4000;
+		DL.StartSpeed = 2000;
+		DL.DriveSpeed = 8000;
+		LC.AxisNum = USB1020_XAXIS;
+		//先在前进后退中测试能不能仅靠改变脉冲的正负，改变移动方向，如果可以就在这里将方向去掉
+		LC.nPulseNum = abs(x_LP);
+		if (x_LP > 0) {//脉冲大于0，反转归0；
+			LC.Direction = USB1020_MDIRECTION;
+		}else {
+			LC.Direction = USB1020_PDIRECTION;
+		}
+		USB1020_InitLVDV(hDevice, &DL, &LC);
+		USB1020_StartLVDV(hDevice, LC.AxisNum);
+	}
+	if (y_axis == 1) {
+		LC.LV_DV = USB1020_DV;
+		LC.PulseMode = USB1020_CPDIR;
+		LC.Line_Curve = USB1020_LINE;
+
+		DL.Multiple = 10;
+		DL.Acceleration = 4000;
+		DL.Deceleration = 4000;
+		DL.StartSpeed = 2000;
+		DL.DriveSpeed = 8000;
+		LC.AxisNum = USB1020_YAXIS;
+		//先在前进后退中测试能不能仅靠改变脉冲的正负，改变移动方向，如果可以就在这里将方向去掉
+		LC.nPulseNum = abs(y_LP);
+		if (y_LP > 0) {//脉冲大于0，反转归0；
+			LC.Direction = USB1020_MDIRECTION;
+		}
+		else {
+			LC.Direction = USB1020_PDIRECTION;
+		}
+		USB1020_InitLVDV(hDevice, &DL, &LC);
+		USB1020_StartLVDV(hDevice, LC.AxisNum);
+	}
+	if (z_axis == 1) {
+		LC.LV_DV = USB1020_DV;
+		LC.PulseMode = USB1020_CPDIR;
+		LC.Line_Curve = USB1020_LINE;
+
+		DL.Multiple = 10;
+		DL.Acceleration = 4000;
+		DL.Deceleration = 4000;
+		DL.StartSpeed = 2000;
+		DL.DriveSpeed = 8000;
+		LC.AxisNum = USB1020_ZAXIS;
+		//先在前进后退中测试能不能仅靠改变脉冲的正负，改变移动方向，如果可以就在这里将方向去掉
+		LC.nPulseNum = abs(z_LP);
+		if (z_LP > 0) {//脉冲大于0，反转归0；
+			LC.Direction = USB1020_MDIRECTION;
+		}
+		else {
+			LC.Direction = USB1020_PDIRECTION;
+		}
+		USB1020_InitLVDV(hDevice, &DL, &LC);
+		USB1020_StartLVDV(hDevice, LC.AxisNum);
+	}
+
+	basedThreadSend();
 }
 //////////////////////////////////////////////////////////////////
 // /////////////////1轴，2轴，3轴///////////////////////////////
@@ -128,6 +209,8 @@ void MotorMove::doubleAxis() {
 
 	USB1020_InitLineInterpolation_2D(hDevice, &DL, &IA, &LD);//2D的参数载入
 	USB1020_StartLineInterpolation_2D(hDevice);
+
+	basedThreadSend();//创建线程发送基础运动完成的函数
 }
 void MotorMove::triAxis() {
 	IA.Axis1 = USB1020_XAXIS;
@@ -146,6 +229,8 @@ void MotorMove::triAxis() {
 
 	USB1020_InitLineInterpolation_3D(hDevice, &DL, &IA, &LD);
 	USB1020_StartLineInterpolation_3D(hDevice);
+
+	basedThreadSend();//创建线程发送基础运动完成的函数
 }
 //////////////////////////////////////////////////////////////////
 
