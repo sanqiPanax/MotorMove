@@ -38,7 +38,9 @@ void MotorMove::moveForward(int pulse) {
 		singleAxis();
 	}
 	if (nums_of_axis == 2) {
-
+		LD.n1AxisPulseNum = pulse;
+		LD.n2AxisPulseNum = pulse;
+		doubleAxis();
 	}
 	if (nums_of_axis == 3) {
 
@@ -49,7 +51,8 @@ void MotorMove::moveForward(int pulse) {
 void MotorMove::moveBack(int pulse) {
 	//只有一轴
 	if (nums_of_axis == 1) {
-
+		LC.nPulseNum = pulse;
+		singleAxis();
 	}
 	if (nums_of_axis == 2) {
 
@@ -91,10 +94,32 @@ void MotorMove::singleAxis() {
 	USB1020_StartLVDV(hDevice, LC.AxisNum);//开始运动
 
 	basedThreadSend();//创建线程发送基础运动完成的函数
-	//推送成功了吗
 }
 void MotorMove::doubleAxis() {
+	if (x_axis * y_axis == 1) {//乘积为1，说明是这两个轴
+		IA.Axis1 = USB1020_XAXIS;
+		IA.Axis2 = USB1020_YAXIS;
+	}
+	if (x_axis * z_axis == 1) {
+		IA.Axis1 = USB1020_XAXIS;
+		IA.Axis2 = USB1020_ZAXIS;
+	}
+	if (y_axis * z_axis == 1) {
+		IA.Axis1 = USB1020_YAXIS;
+		IA.Axis2 = USB1020_ZAXIS;
+	}
+	//暂时不考虑脉冲输出的问题
+	LD.Line_Curve = USB1020_LINE;//直线加速
+	LD.ConstantSpeed = USB1020_CONSTAND;//固定速度
 
+	DL.Multiple = 10;
+	DL.Acceleration = 4000;
+	DL.Deceleration = 4000;
+	DL.StartSpeed = 2000;
+	DL.DriveSpeed = 8000;
+
+	USB1020_InitLineInterpolation_2D(hDevice, &DL, &IA, &LD);//2D的参数载入
+	USB1020_StartLineInterpolation_2D(hDevice);
 }
 void MotorMove::triAxis() {
 

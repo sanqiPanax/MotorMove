@@ -40,7 +40,7 @@ private:
     
     USB1020_PARA_LCData LC;
     
-    USB1020_PARA_LineData LD;
+    USB1020_PARA_LineData LD;//两轴和三轴需要的变量
 
     USB1020_PARA_InterpolationAxis IA;
 

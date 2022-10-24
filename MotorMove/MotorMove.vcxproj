@@ -106,7 +106,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="motormove_global.h" />
-    <ClInclude Include="useless.h" />
     <QtMoc Include="MotorMove.h" />
     <ClCompile Include="MotorMove.cpp" />
   </ItemGroup>
