@@ -285,3 +285,8 @@ void MotorMove::basedThreadSend() {
 		emit basedMoveComplate(sign_of_stop);
 		}).detach();
 }
+
+/////////////////////////////z轴的循环运动////////////////////////////////////////////////////////////
+void MotorMove::zAxisLoopMove(int steps, int step_distance) {
+
+}

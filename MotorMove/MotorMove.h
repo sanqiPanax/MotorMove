@@ -32,6 +32,7 @@ public:
 
 signals:
     void basedMoveComplate(unsigned int);//基础运动完成信号；将轴二进制数发回
+    void zAxisLoopMoveComplate(int);//形参就是第多少次（或者说第多少步）
 private:
     //设备，公共参数结构体等
     HANDLE hDevice;
