@@ -91,6 +91,7 @@ void MotorMove::singleAxis() {
 	USB1020_StartLVDV(hDevice, LC.AxisNum);//开始运动
 
 	basedThreadSend();//创建线程发送基础运动完成的函数
+	//推送成功了吗
 }
 void MotorMove::doubleAxis() {
 
