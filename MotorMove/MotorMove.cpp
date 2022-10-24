@@ -43,7 +43,10 @@ void MotorMove::moveForward(int pulse) {
 		doubleAxis();
 	}
 	if (nums_of_axis == 3) {
-
+		LD.n1AxisPulseNum = pulse;
+		LD.n2AxisPulseNum = pulse;
+		LD.n3AxisPulseNum = pulse;
+		triAxis();
 	}
 
 }
@@ -51,14 +54,19 @@ void MotorMove::moveForward(int pulse) {
 void MotorMove::moveBack(int pulse) {
 	//只有一轴
 	if (nums_of_axis == 1) {
-		LC.nPulseNum = pulse;
+		LC.nPulseNum = -pulse;
 		singleAxis();
 	}
 	if (nums_of_axis == 2) {
-
+		LD.n1AxisPulseNum = -pulse;
+		LD.n2AxisPulseNum = -pulse;
+		doubleAxis();
 	}
 	if (nums_of_axis == 3) {
-
+		LD.n1AxisPulseNum = -pulse;
+		LD.n2AxisPulseNum = -pulse;
+		LD.n3AxisPulseNum = -pulse;
+		triAxis();
 	}
 }
 //置零
@@ -122,7 +130,22 @@ void MotorMove::doubleAxis() {
 	USB1020_StartLineInterpolation_2D(hDevice);
 }
 void MotorMove::triAxis() {
+	IA.Axis1 = USB1020_XAXIS;
+	IA.Axis2 = USB1020_YAXIS;
+	IA.Axis3 = USB1020_ZAXIS;
 
+	//暂时不考虑脉冲输出模式
+	LD.Line_Curve = USB1020_LINE;//直线运动
+	LD.ConstantSpeed = USB1020_CONSTAND;//都设置为固定速度
+
+	DL.Multiple = 10;
+	DL.Acceleration = 4000;
+	DL.Deceleration = 4000;
+	DL.StartSpeed = 2000;
+	DL.DriveSpeed = 8000;
+
+	USB1020_InitLineInterpolation_3D(hDevice, &DL, &IA, &LD);
+	USB1020_StartLineInterpolation_3D(hDevice);
 }
 //////////////////////////////////////////////////////////////////
 
