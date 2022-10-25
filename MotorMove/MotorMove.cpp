@@ -369,3 +369,15 @@ void MotorMove::xyAxisThreadSend(int location_x, int location_y) {
 		emit xyAxisMoveComplate(location_x, location_y);
 		}).detach();
 }
+
+//输出当前逻辑位置和实际位置，如果有的话
+void MotorMove::showCurrentLocation() {
+	cout << "x轴当前逻辑位置：" << USB1020_ReadLP(hDevice, USB1020_XAXIS) << endl;
+	cout << "x轴当前实际位置：" << USB1020_ReadEP(hDevice, USB1020_XAXIS) << endl;
+
+	cout << "y轴当前逻辑位置：" << USB1020_ReadLP(hDevice, USB1020_YAXIS) << endl;
+	cout << "y轴当前实际位置：" << USB1020_ReadEP(hDevice, USB1020_YAXIS) << endl;
+
+	cout << "z轴当前逻辑位置：" << USB1020_ReadLP(hDevice, USB1020_ZAXIS) << endl;
+	cout << "z轴当前实际位置：" << USB1020_ReadEP(hDevice, USB1020_ZAXIS) << endl;
+}
