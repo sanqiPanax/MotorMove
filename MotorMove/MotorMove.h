@@ -33,6 +33,7 @@ public:
 signals:
     void basedMoveComplate(unsigned int);//基础运动完成信号；将轴二进制数发回
     void zAxisLoopMoveComplate(int);//形参就是第多少次（或者说第多少步）
+    void xyAxisMoveComplate(int, int);//形参就是当前位置
 private:
     //设备，公共参数结构体等
     HANDLE hDevice;
@@ -94,4 +95,6 @@ private:
     //z轴的信号发送和线程处理
     void zAxisThreadSend(int output);
 
+    //////////////////////////xy“弓”型运动相关函数//////////////////////////////////////
+    void xyAxisThreadSend(int location_x, int location_y);
 };

@@ -258,7 +258,7 @@ void MotorMove::resetAxis() {
 	z_axis = 0;
 	nums_of_axis = 0;
 }
-/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////线程函数///////////////////////////////////
 //基础运动函数完成信号发送函数，线程
 void MotorMove::basedThreadSend() {
@@ -285,7 +285,7 @@ void MotorMove::basedThreadSend() {
 		emit basedMoveComplate(sign_of_stop);
 		}).detach();
 }
-
+////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////z轴的循环运动和相关函数////////////////////////////////////////////////////////////
 
 void MotorMove::zAxisLoopMove(int steps, int step_distance) {
@@ -326,5 +326,46 @@ void MotorMove::zAxisThreadSend(int output) {
 		}
 		emit zAxisLoopMoveComplate(output);//发送这是第几次
 
+		}).detach();
+}
+//////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////xy的“弓”型运动/////////////////////////////////////////////
+void MotorMove::xyAxisMove(int length, int width, int level_distance, int vertical_distance) {
+	int location_x = 0, location_y = 0;//xy的坐标点
+	//外部循环为y，内部循环为x
+	for (int j = 0; j < width; ++j) {
+		LC.AxisNum = USB1020_XAXIS;
+		if (j % 2 == 0)LC.Direction = 1;
+		else LC.Direction = 0;
+		//先让x运动，在让y运动
+		for (int i = 0; i < length; ++i) {
+			LC.nPulseNum = level_distance;
+			USB1020_InitLVDV(hDevice, &DL, &LC);
+			USB1020_StartLVDV(hDevice, LC.AxisNum);
+			if (LC.Direction == 1) { xyAxisThreadSend(i + 1, j + 1); }
+			else { xyAxisThreadSend(length - i, j + 1); }
+		}
+		LC.AxisNum = USB1020_YAXIS;
+		LC.Direction = 1;//y轴始终往下走
+		LC.nPulseNum = vertical_distance;
+		USB1020_InitLVDV(hDevice, &DL, &LC);
+		USB1020_StartLVDV(hDevice, LC.AxisNum);
+		if (j % 2 == 0) { xyAxisThreadSend(length, j + 1); }//偶数时，位置在每行的末尾
+		else { xyAxisThreadSend(1, j + 1); }//奇数时，在每行的开头
+	}
+}
+
+//xy轴运动的信号发送
+void MotorMove::xyAxisThreadSend(int location_x, int location_y) {
+	std::thread([&] {
+		LONG speed1 = 0,speed2=0;
+		speed1 = USB1020_ReadCV(hDevice, USB1020_XAXIS);
+		speed2 = USB1020_ReadCV(hDevice, USB1020_YAXIS);
+
+		while (speed1!= 0||speed2!=0) {
+			speed1 = USB1020_ReadCV(hDevice, USB1020_XAXIS);
+			speed2 = USB1020_ReadCV(hDevice, USB1020_YAXIS);
+		}
+		emit xyAxisMoveComplate(location_x, location_y);
 		}).detach();
 }
