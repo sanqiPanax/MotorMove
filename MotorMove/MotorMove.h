@@ -91,5 +91,7 @@ private:
     //基础运动函数完成信号发送函数，线程
     void basedThreadSend();
 
+    //z轴的信号发送和线程处理
+    void zAxisThreadSend(int output);
 
 };
