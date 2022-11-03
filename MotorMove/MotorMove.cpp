@@ -1,8 +1,9 @@
 #include "MotorMove.h"
 
+
 MotorMove::MotorMove(QObject* parent)
 {
-
+	
 }
 MotorMove::~MotorMove() {
 
@@ -48,7 +49,6 @@ void MotorMove::moveForward(int pulse) {
 		LD.n3AxisPulseNum = pulse;
 		triAxis();
 	}
-
 }
 //后退
 void MotorMove::moveBack(int pulse) {
@@ -72,7 +72,7 @@ void MotorMove::moveBack(int pulse) {
 //置零
 void MotorMove::setZero() {
 	if (x_axis == 1) {
-		USB1020_SetLP(hDevice, USB1020_XAXIS, 0);
+		USB1020_SetLP(hDevice, USB1020_XAXIS, 0);//将逻辑位置和实际位置都设为0
 		USB1020_SetEP(hDevice, USB1020_XAXIS, 0);
 	}
 	if (y_axis == 1) {
@@ -273,6 +273,7 @@ void MotorMove::basedThreadSend() {
 			speed2 = USB1020_ReadCV(hDevice, USB1020_YAXIS);
 			speed3 = USB1020_ReadCV(hDevice, USB1020_ZAXIS);
 		}
+		//好像没有必要，将原本传入的全部传回即可
 		if (x_axis == 1) {
 			sign_of_stop = sign_of_stop | XAXIS;
 		}
@@ -287,77 +288,98 @@ void MotorMove::basedThreadSend() {
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////z轴的循环运动和相关函数////////////////////////////////////////////////////////////
-
+int zAxisPulse = 0;
+int zAxisSteps = 0;
 void MotorMove::zAxisLoopMove(int steps, int step_distance) {
-	LC.AxisNum = USB1020_ZAXIS;
-	int output = 1;
-	int n = (steps - 1) / 2;//得到每一边有多少点
-	{
-		LC.Direction = 1;
-		LC.nPulseNum = n * step_distance;//先走到最右边
-		USB1020_InitLVDV(hDevice, &DL, &LC);
-		USB1020_StartLVDV(hDevice, LC.AxisNum);
-		
-		zAxisThreadSend(output);
-	}
-	for (int i = 0; i < 2 * n; ++i) {
-		++output;
-		LC.Direction = 0;
-		LC.nPulseNum = step_distance;
-		USB1020_InitLVDV(hDevice, &DL, &LC);
-		USB1020_StartLVDV(hDevice, LC.AxisNum);
-		zAxisThreadSend(output);
-	}
-	{
-		LC.Direction = 1;
-		LC.nPulseNum = n * step_distance;//走回中点
-		USB1020_InitLVDV(hDevice, &DL, &LC);
-		USB1020_StartLVDV(hDevice, LC.AxisNum);
-	}
-}
+	zAxisPulse = step_distance;//给全局变量步长赋值
+	zAxisSteps = steps;
+	int n = (steps - 1) / 2;
+	//定长驱动
+	LC.LV_DV = USB1020_DV;
+	//脉冲方式
+	LC.PulseMode = USB1020_CPDIR;
+	//运动方式（直线加减速还是曲线加减速）
+	LC.Line_Curve = USB1020_LINE;
+	DL.Multiple = 10;
+	DL.Acceleration = 4000;
+	DL.Deceleration = 4000;
+	DL.StartSpeed = 2000;
+	DL.DriveSpeed = 8000;
 
+	LC.AxisNum = USB1020_ZAXIS;
+	LC.nPulseNum = step_distance*n;
+	LC.Direction = 0;
+	
+	zAxisThreadSend(1);
+}
 //z轴的信号发送和线程处理
 void MotorMove::zAxisThreadSend(int output) {
 	std::thread([&] {
+		USB1020_InitLVDV(hDevice, &DL, &LC);
+		USB1020_StartLVDV(hDevice, LC.AxisNum);
 		LONG speed = 0;
-		speed = USB1020_ReadCV(hDevice, USB1020_ZAXIS);
+		speed = USB1020_ReadCV(hDevice, LC.AxisNum);
 		while (speed != 0) {
-			speed = USB1020_ReadCV(hDevice, USB1020_ZAXIS);
+			speed = USB1020_ReadCV(hDevice, LC.AxisNum);
 		}
-		emit zAxisLoopMoveComplate(output);//发送这是第几次
-
+		emit zAxisLoopMoveComplate(output);
+		}).detach();
+	LC.Direction = 1;
+	LC.nPulseNum = zAxisPulse;
+}
+void MotorMove::backToMiddlePoint() {
+	LC.Direction = 0;
+	LC.nPulseNum = (zAxisSteps - 1) / 2 * zAxisPulse;
+	std::thread([&] {
+		USB1020_InitLVDV(hDevice, &DL, &LC);
+		USB1020_StartLVDV(hDevice, LC.AxisNum);
+		LONG speed = 0;
+		speed = USB1020_ReadCV(hDevice, LC.AxisNum);
+		while (speed != 0) {
+			speed = USB1020_ReadCV(hDevice, LC.AxisNum);
+		}
+		emit zAxisLoopMoveComplate(0);//发送0表示已经回到原点
 		}).detach();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////xy的“弓”型运动/////////////////////////////////////////////
+int xLength = 0;
+int yWidth = 0;
+int xDistance = 0;
+int yDistance = 0;
+int xyTimes = 1;
+int yCount = 0;//用于切换方向
 void MotorMove::xyAxisMove(int length, int width, int level_distance, int vertical_distance) {
-	int location_x = 0, location_y = 0;//xy的坐标点
-	//外部循环为y，内部循环为x
-	for (int j = 0; j < width; ++j) {
-		LC.AxisNum = USB1020_XAXIS;
-		if (j % 2 == 0)LC.Direction = 1;
-		else LC.Direction = 0;
-		//先让x运动，在让y运动
-		for (int i = 0; i < length; ++i) {
-			LC.nPulseNum = level_distance;
-			USB1020_InitLVDV(hDevice, &DL, &LC);
-			USB1020_StartLVDV(hDevice, LC.AxisNum);
-			if (LC.Direction == 1) { xyAxisThreadSend(i + 1, j + 1); }
-			else { xyAxisThreadSend(length - i, j + 1); }
-		}
-		LC.AxisNum = USB1020_YAXIS;
-		LC.Direction = 1;//y轴始终往下走
-		LC.nPulseNum = vertical_distance;
-		USB1020_InitLVDV(hDevice, &DL, &LC);
-		USB1020_StartLVDV(hDevice, LC.AxisNum);
-		if (j % 2 == 0) { xyAxisThreadSend(length, j + 1); }//偶数时，位置在每行的末尾
-		else { xyAxisThreadSend(1, j + 1); }//奇数时，在每行的开头
-	}
-}
+	xLength = length;
+	yWidth = width;
+	xDistance = level_distance;
+	yDistance = vertical_distance;
+	//定长驱动
+	LC.LV_DV = USB1020_DV;
+	//脉冲方式
+	LC.PulseMode = USB1020_CPDIR;
+	//运动方式（直线加减速还是曲线加减速）
+	LC.Line_Curve = USB1020_LINE;
+	DL.Multiple = 10;
+	DL.Acceleration = 4000;
+	DL.Deceleration = 4000;
+	DL.StartSpeed = 2000;
+	DL.DriveSpeed = 8000;
 
+	LC.AxisNum = USB1020_XAXIS;
+	LC.Direction = 1;
+	LC.nPulseNum = xDistance;
+
+	yCount = 0;//将上次的清零
+	
+}
+///先执行一次xyAxisMove，然后进入处理图像，发送信号的循环
 //xy轴运动的信号发送
 void MotorMove::xyAxisThreadSend(int location_x, int location_y) {
+	++xyTimes;
 	std::thread([&] {
+		USB1020_InitLVDV(hDevice, &DL, &LC);
+		USB1020_StartLVDV(hDevice, LC.AxisNum);
 		LONG speed1 = 0,speed2=0;
 		speed1 = USB1020_ReadCV(hDevice, USB1020_XAXIS);
 		speed2 = USB1020_ReadCV(hDevice, USB1020_YAXIS);
@@ -367,6 +389,24 @@ void MotorMove::xyAxisThreadSend(int location_x, int location_y) {
 			speed2 = USB1020_ReadCV(hDevice, USB1020_YAXIS);
 		}
 		emit xyAxisMoveComplate(location_x, location_y);
+		if (xyTimes == xLength) {
+			LC.AxisNum = USB1020_YAXIS;
+			LC.nPulseNum = yDistance;
+			LC.Direction = 1;
+			++yCount;
+		}
+		if (xyTimes > xLength) {
+			xyTimes = 1;
+			LC.AxisNum = USB1020_XAXIS;
+			LC.nPulseNum = xDistance;
+			if (yCount % 2 == 1) {
+				LC.Direction = 0;
+			}
+			else
+			{
+				LC.Direction = 1;
+			}
+		}
 		}).detach();
 }
 
@@ -381,3 +421,4 @@ void MotorMove::showCurrentLocation() {
 	cout << "z轴当前逻辑位置：" << USB1020_ReadLP(hDevice, USB1020_ZAXIS) << endl;
 	cout << "z轴当前实际位置：" << USB1020_ReadEP(hDevice, USB1020_ZAXIS) << endl;
 }
+
