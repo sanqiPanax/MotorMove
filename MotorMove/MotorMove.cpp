@@ -287,7 +287,10 @@ void MotorMove::basedThreadSend() {
 		}).detach();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////z轴的循环运动和相关函数////////////////////////////////////////////////////////////
+/////////////////////////////z轴的循环运动和相关函数///////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////开头调用一次zAxisLoopMove，然后开始发送信号给槽函数，接收信号，
+/////////////////////最后走完所有点之后，再调用一次zAxisLoopMove
 int zAxisPulse = 0;
 int zAxisSteps = 0;
 void MotorMove::zAxisLoopMove(int steps, int step_distance) {
@@ -310,7 +313,7 @@ void MotorMove::zAxisLoopMove(int steps, int step_distance) {
 	LC.nPulseNum = step_distance*n;
 	LC.Direction = 0;
 	
-	zAxisThreadSend(1);
+	//zAxisThreadSend(1);
 }
 //z轴的信号发送和线程处理
 void MotorMove::zAxisThreadSend(int output) {
@@ -327,22 +330,9 @@ void MotorMove::zAxisThreadSend(int output) {
 	LC.Direction = 1;
 	LC.nPulseNum = zAxisPulse;
 }
-void MotorMove::backToMiddlePoint() {
-	LC.Direction = 0;
-	LC.nPulseNum = (zAxisSteps - 1) / 2 * zAxisPulse;
-	std::thread([&] {
-		USB1020_InitLVDV(hDevice, &DL, &LC);
-		USB1020_StartLVDV(hDevice, LC.AxisNum);
-		LONG speed = 0;
-		speed = USB1020_ReadCV(hDevice, LC.AxisNum);
-		while (speed != 0) {
-			speed = USB1020_ReadCV(hDevice, LC.AxisNum);
-		}
-		emit zAxisLoopMoveComplate(0);//发送0表示已经回到原点
-		}).detach();
-}
+
 //////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////xy的“弓”型运动/////////////////////////////////////////////
+//////////////////////////////////xy的“弓”型运动///////////////////////////////////////////
 int xLength = 0;
 int yWidth = 0;
 int xDistance = 0;

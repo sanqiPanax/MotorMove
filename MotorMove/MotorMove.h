@@ -37,7 +37,6 @@ signals:
 public slots:
     //z轴的信号发送和线程处理
     void zAxisThreadSend(int output);
-    void backToMiddlePoint();
     //xy轴的信号发送和线程处理
     //xy轴“弓”型运动的信号发送和线程处理
     void xyAxisThreadSend(int location_x, int location_y);
