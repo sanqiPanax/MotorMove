@@ -3,23 +3,20 @@
 #include <iostream>
 #include "USB1020.h"
 #include<thread>
-
-#define XAXIS 0b00000001
-#define YAXIS 0b00000010
-#define ZAXIS 0b00000100
-
-#define FORWARD 1
-#define BACK 2
-#define SETZERO 3
-#define BACKZERO 4
-
-
 using namespace std;
 
+const int XAXIS = 0b00000001;
+const int YAXIS = 0b00000010;
+const int ZAXIS = 0b00000100;
+const int FORWARD = 1;
+const int BACK = 2;
+const int SETZERO = 3;
+const int BACKZERO = 4;
 extern "C" class MOTORMOVE_EXPORT MotorMove : public QObject
 {
     Q_OBJECT
 public:
+
     MotorMove(QObject* parent=Q_NULLPTR);
     ~MotorMove();
 
@@ -73,12 +70,7 @@ private:
     void setZero();
     //回到原点 function设为4
     void backToZero();
-    //z轴的往返运动
-    void zAxisCircularMotion();
-    //xy轴弓字型运动
-    void xyAxisArchMotion();
 
-    //2.选轴
     
     //选轴
     void decadeAxis(int axis);
@@ -98,8 +90,5 @@ private:
 
     //基础运动函数完成信号发送函数，线程
     void basedThreadSend();
-
-   
-
 
 };

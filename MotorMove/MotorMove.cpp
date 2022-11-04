@@ -3,7 +3,7 @@
 
 MotorMove::MotorMove(QObject* parent)
 {
-	
+	hDevice = USB1020_CreateDevice(0);
 }
 MotorMove::~MotorMove() {
 
