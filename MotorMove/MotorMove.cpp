@@ -6,6 +6,10 @@
 MotorMove::MotorMove(QObject* parent)
 {
 	hDevice = USB1020_CreateDevice(0);
+
+	USB1020_PulseOutMode(hDevice,USB1020_XAXIS, USB1020_CPDIR, 0, 0);
+	USB1020_PulseOutMode(hDevice,USB1020_YAXIS, USB1020_CPDIR, 0, 0);
+	USB1020_PulseOutMode(hDevice,USB1020_ZAXIS, USB1020_CPDIR, 0, 0);
 }
 MotorMove::~MotorMove() {
 	
@@ -107,11 +111,12 @@ void MotorMove::backToZero() {
 		LC.AxisNum = USB1020_XAXIS;
 		//先在前进后退中测试能不能仅靠改变脉冲的正负，改变移动方向，如果可以就在这里将方向去掉
 		LC.nPulseNum = abs(x_LP);
-		if (x_LP > 0) {//脉冲大于0，反转归0；
-			LC.Direction = USB1020_MDIRECTION;
-		}else {
-			LC.Direction = USB1020_PDIRECTION;
-		}
+		//if (x_LP > 0) {//脉冲大于0，反转归0；
+		//	LC.Direction = USB1020_MDIRECTION;
+		//}else {
+		//	LC.Direction = USB1020_PDIRECTION;
+		//}
+		LC.Direction = x_LP > 0 ? 0 : 1;
 		USB1020_InitLVDV(hDevice, &DL, &LC);
 		USB1020_StartLVDV(hDevice, LC.AxisNum);
 	}
@@ -128,12 +133,13 @@ void MotorMove::backToZero() {
 		LC.AxisNum = USB1020_YAXIS;
 		//先在前进后退中测试能不能仅靠改变脉冲的正负，改变移动方向，如果可以就在这里将方向去掉
 		LC.nPulseNum = abs(y_LP);
-		if (y_LP > 0) {//脉冲大于0，反转归0；
-			LC.Direction = USB1020_MDIRECTION;
-		}
-		else {
-			LC.Direction = USB1020_PDIRECTION;
-		}
+		//if (y_LP > 0) {//脉冲大于0，反转归0；
+		//	LC.Direction = USB1020_MDIRECTION;
+		//}
+		//else {
+		//	LC.Direction = USB1020_PDIRECTION;
+		//}
+		LC.Direction = y_LP > 0 ? 0 : 1;
 		USB1020_InitLVDV(hDevice, &DL, &LC);
 		USB1020_StartLVDV(hDevice, LC.AxisNum);
 	}
@@ -150,16 +156,16 @@ void MotorMove::backToZero() {
 		LC.AxisNum = USB1020_ZAXIS;
 		//先在前进后退中测试能不能仅靠改变脉冲的正负，改变移动方向，如果可以就在这里将方向去掉
 		LC.nPulseNum = abs(z_LP);
-		if (z_LP > 0) {//脉冲大于0，反转归0；
-			LC.Direction = USB1020_MDIRECTION;
-		}
-		else {
-			LC.Direction = USB1020_PDIRECTION;
-		}
+		//if (z_LP > 0) {//脉冲大于0，反转归0；
+		//	LC.Direction = USB1020_MDIRECTION;
+		//}
+		//else {
+		//	LC.Direction = USB1020_PDIRECTION;
+		//}
+		LC.Direction = z_LP > 0 ? 0 : 1;
 		USB1020_InitLVDV(hDevice, &DL, &LC);
 		USB1020_StartLVDV(hDevice, LC.AxisNum);
 	}
-
 	basedThreadSend();
 }
 //////////////////////////////////////////////////////////////////
@@ -201,8 +207,6 @@ void MotorMove::doubleAxis() {
 		IA.Axis1 = USB1020_YAXIS;
 		IA.Axis2 = USB1020_ZAXIS;
 	}
-	USB1020_PulseOutMode(hDevice, IA.Axis1, USB1020_CPDIR, 0, 0);//不加这两句，反向运动无法进行
-	USB1020_PulseOutMode(hDevice, IA.Axis2, USB1020_CPDIR, 0, 0);
 
 	LD.Line_Curve = USB1020_LINE;//直线加速
 	LD.ConstantSpeed = USB1020_CONSTAND;//固定速度
@@ -222,10 +226,6 @@ void MotorMove::triAxis() {
 	IA.Axis1 = USB1020_XAXIS;
 	IA.Axis2 = USB1020_YAXIS;
 	IA.Axis3 = USB1020_ZAXIS;
-
-	USB1020_PulseOutMode(hDevice, IA.Axis1, USB1020_CPDIR, 0, 0);
-	USB1020_PulseOutMode(hDevice, IA.Axis2, USB1020_CPDIR, 0, 0);
-	USB1020_PulseOutMode(hDevice, IA.Axis3, USB1020_CPDIR, 0, 0);
 
 	LD.Line_Curve = USB1020_LINE;//直线运动
 	LD.ConstantSpeed = USB1020_CONSTAND;//都设置为固定速度
@@ -408,4 +408,3 @@ void MotorMove::showCurrentLocation() {
 	std::cout << "z轴当前逻辑位置：" << USB1020_ReadLP(hDevice, USB1020_ZAXIS) << std::endl;
 	std::cout << "z轴当前实际位置：" << USB1020_ReadEP(hDevice, USB1020_ZAXIS) << std::endl;
 }
-

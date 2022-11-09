@@ -53,7 +53,8 @@ public:
     //xy轴的信号发送和线程处理
     //xy轴“弓”型运动的信号发送和线程处理
     void xyAxisThreadSend();
-
+    //输出当前位置
+    void showCurrentLocation();
 signals:
     void basedMoveComplate();//基础运动完成信号；将轴二进制数发回
     void zAxisLoopMoveComplate();//形参就是第多少次（或者说第多少步）
@@ -115,10 +116,6 @@ private:
     void doubleAxis();
 
     void triAxis();
-
-    //3.输出信息
-    //输出当前位置
-    void showCurrentLocation();
 
     //基础运动函数完成信号发送函数，线程
     void basedThreadSend();
