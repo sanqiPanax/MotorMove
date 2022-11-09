@@ -1,12 +1,14 @@
+#ifndef BUILD_STATIC
+#define BUILD_STATIC
+#endif // !BUILD_STATIC
 #include "MotorMove.h"
-
 
 MotorMove::MotorMove(QObject* parent)
 {
 	hDevice = USB1020_CreateDevice(0);
 }
 MotorMove::~MotorMove() {
-
+	
 }
 
 //基础运动
@@ -36,6 +38,7 @@ void MotorMove::moveForward(int pulse) {
 	//只有一轴
 	if (nums_of_axis == 1) {
 		LC.nPulseNum = pulse;
+		LC.Direction = 1;
 		singleAxis();
 	}
 	if (nums_of_axis == 2) {
@@ -54,7 +57,8 @@ void MotorMove::moveForward(int pulse) {
 void MotorMove::moveBack(int pulse) {
 	//只有一轴
 	if (nums_of_axis == 1) {
-		LC.nPulseNum = -pulse;
+		LC.nPulseNum = pulse;
+		LC.Direction = 0;
 		singleAxis();
 	}
 	if (nums_of_axis == 2) {
@@ -197,7 +201,9 @@ void MotorMove::doubleAxis() {
 		IA.Axis1 = USB1020_YAXIS;
 		IA.Axis2 = USB1020_ZAXIS;
 	}
-	//暂时不考虑脉冲输出的问题
+	USB1020_PulseOutMode(hDevice, IA.Axis1, USB1020_CPDIR, 0, 0);//不加这两句，反向运动无法进行
+	USB1020_PulseOutMode(hDevice, IA.Axis2, USB1020_CPDIR, 0, 0);
+
 	LD.Line_Curve = USB1020_LINE;//直线加速
 	LD.ConstantSpeed = USB1020_CONSTAND;//固定速度
 
@@ -217,7 +223,10 @@ void MotorMove::triAxis() {
 	IA.Axis2 = USB1020_YAXIS;
 	IA.Axis3 = USB1020_ZAXIS;
 
-	//暂时不考虑脉冲输出模式
+	USB1020_PulseOutMode(hDevice, IA.Axis1, USB1020_CPDIR, 0, 0);
+	USB1020_PulseOutMode(hDevice, IA.Axis2, USB1020_CPDIR, 0, 0);
+	USB1020_PulseOutMode(hDevice, IA.Axis3, USB1020_CPDIR, 0, 0);
+
 	LD.Line_Curve = USB1020_LINE;//直线运动
 	LD.ConstantSpeed = USB1020_CONSTAND;//都设置为固定速度
 
@@ -264,7 +273,6 @@ void MotorMove::resetAxis() {
 void MotorMove::basedThreadSend() {
 	std::thread([&] {
 		LONG speed1 = 0, speed2 = 0, speed3 = 0;//三个轴的速度
-		unsigned int sign_of_stop = 0;
 		speed1 = USB1020_ReadCV(hDevice, USB1020_XAXIS);
 		speed2 = USB1020_ReadCV(hDevice, USB1020_YAXIS);
 		speed3 = USB1020_ReadCV(hDevice, USB1020_ZAXIS);
@@ -272,18 +280,10 @@ void MotorMove::basedThreadSend() {
 			speed1 = USB1020_ReadCV(hDevice, USB1020_XAXIS);
 			speed2 = USB1020_ReadCV(hDevice, USB1020_YAXIS);
 			speed3 = USB1020_ReadCV(hDevice, USB1020_ZAXIS);
+			std::this_thread::sleep_for(std::chrono::milliseconds(20));
 		}
 		//好像没有必要，将原本传入的全部传回即可
-		if (x_axis == 1) {
-			sign_of_stop = sign_of_stop | XAXIS;
-		}
-		if (y_axis == 1) {
-			sign_of_stop = sign_of_stop | YAXIS;
-		}
-		if (z_axis == 1) {
-			sign_of_stop = sign_of_stop | ZAXIS;
-		}
-		emit basedMoveComplate(sign_of_stop);
+		emit basedMoveComplate();
 		}).detach();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -291,8 +291,7 @@ void MotorMove::basedThreadSend() {
 //////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////开头调用一次zAxisLoopMove，然后开始发送信号给槽函数，接收信号，
 /////////////////////最后走完所有点之后，再调用一次zAxisLoopMove
-int zAxisPulse = 0;
-int zAxisSteps = 0;
+
 void MotorMove::zAxisLoopMove(int steps, int step_distance) {
 	zAxisPulse = step_distance;//给全局变量步长赋值
 	zAxisSteps = steps;
@@ -316,7 +315,7 @@ void MotorMove::zAxisLoopMove(int steps, int step_distance) {
 	//zAxisThreadSend(1);
 }
 //z轴的信号发送和线程处理
-void MotorMove::zAxisThreadSend(int output) {
+void MotorMove::zAxisThreadSend() {
 	std::thread([&] {
 		USB1020_InitLVDV(hDevice, &DL, &LC);
 		USB1020_StartLVDV(hDevice, LC.AxisNum);
@@ -324,21 +323,18 @@ void MotorMove::zAxisThreadSend(int output) {
 		speed = USB1020_ReadCV(hDevice, LC.AxisNum);
 		while (speed != 0) {
 			speed = USB1020_ReadCV(hDevice, LC.AxisNum);
+			std::this_thread::sleep_for(std::chrono::milliseconds(20));
 		}
-		emit zAxisLoopMoveComplate(output);
+		emit zAxisLoopMoveComplate();
+		LC.Direction = 1;
+		LC.nPulseNum = zAxisPulse;
 		}).detach();
-	LC.Direction = 1;
-	LC.nPulseNum = zAxisPulse;
+
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////xy的“弓”型运动///////////////////////////////////////////
-int xLength = 0;
-int yWidth = 0;
-int xDistance = 0;
-int yDistance = 0;
-int xyTimes = 1;
-int yCount = 0;//用于切换方向
+
 void MotorMove::xyAxisMove(int length, int width, int level_distance, int vertical_distance) {
 	xLength = length;
 	yWidth = width;
@@ -365,7 +361,7 @@ void MotorMove::xyAxisMove(int length, int width, int level_distance, int vertic
 }
 ///先执行一次xyAxisMove，然后进入处理图像，发送信号的循环
 //xy轴运动的信号发送
-void MotorMove::xyAxisThreadSend(int location_x, int location_y) {
+void MotorMove::xyAxisThreadSend() {
 	++xyTimes;
 	std::thread([&] {
 		USB1020_InitLVDV(hDevice, &DL, &LC);
@@ -377,8 +373,9 @@ void MotorMove::xyAxisThreadSend(int location_x, int location_y) {
 		while (speed1!= 0||speed2!=0) {
 			speed1 = USB1020_ReadCV(hDevice, USB1020_XAXIS);
 			speed2 = USB1020_ReadCV(hDevice, USB1020_YAXIS);
+			std::this_thread::sleep_for(std::chrono::milliseconds(20));
 		}
-		emit xyAxisMoveComplate(location_x, location_y);
+		emit xyAxisMoveComplate();
 		if (xyTimes == xLength) {
 			LC.AxisNum = USB1020_YAXIS;
 			LC.nPulseNum = yDistance;
@@ -402,13 +399,13 @@ void MotorMove::xyAxisThreadSend(int location_x, int location_y) {
 
 //输出当前逻辑位置和实际位置，如果有的话
 void MotorMove::showCurrentLocation() {
-	cout << "x轴当前逻辑位置：" << USB1020_ReadLP(hDevice, USB1020_XAXIS) << endl;
-	cout << "x轴当前实际位置：" << USB1020_ReadEP(hDevice, USB1020_XAXIS) << endl;
+	std::cout << "x轴当前逻辑位置：" << USB1020_ReadLP(hDevice, USB1020_XAXIS) << std::endl;
+	std::cout << "x轴当前实际位置：" << USB1020_ReadEP(hDevice, USB1020_XAXIS) << std::endl;
 
-	cout << "y轴当前逻辑位置：" << USB1020_ReadLP(hDevice, USB1020_YAXIS) << endl;
-	cout << "y轴当前实际位置：" << USB1020_ReadEP(hDevice, USB1020_YAXIS) << endl;
+	std::cout << "y轴当前逻辑位置：" << USB1020_ReadLP(hDevice, USB1020_YAXIS) << std::endl;
+	std::cout << "y轴当前实际位置：" << USB1020_ReadEP(hDevice, USB1020_YAXIS) << std::endl;
 
-	cout << "z轴当前逻辑位置：" << USB1020_ReadLP(hDevice, USB1020_ZAXIS) << endl;
-	cout << "z轴当前实际位置：" << USB1020_ReadEP(hDevice, USB1020_ZAXIS) << endl;
+	std::cout << "z轴当前逻辑位置：" << USB1020_ReadLP(hDevice, USB1020_ZAXIS) << std::endl;
+	std::cout << "z轴当前实际位置：" << USB1020_ReadEP(hDevice, USB1020_ZAXIS) << std::endl;
 }
 
