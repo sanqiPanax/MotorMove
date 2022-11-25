@@ -293,9 +293,9 @@ void MotorMove::basedThreadSend() {
 /////////////////////最后走完所有点之后，再调用一次zAxisLoopMove
 
 void MotorMove::zAxisLoopMove(int steps, int step_distance) {
-	zAxis_pulse = step_distance;//给全局变量步长赋值
-	zAxis_steps = steps;
-	zAxis_half_steps = (steps - 1) / 2;
+	zAxisPulse = step_distance;//给全局变量步长赋值
+	zAxisSteps = steps;
+	int n = (steps - 1) / 2;
 	//定长驱动
 	LC.LV_DV = USB1020_DV;
 	//脉冲方式
@@ -309,16 +309,13 @@ void MotorMove::zAxisLoopMove(int steps, int step_distance) {
 	DL.DriveSpeed = 8000;
 
 	LC.AxisNum = USB1020_ZAXIS;
-	LC.nPulseNum = zAxis_pulse * zAxis_half_steps;
+	LC.nPulseNum = step_distance*n;
 	LC.Direction = 0;
 	
 	//zAxisThreadSend(1);
 }
 //z轴的信号发送和线程处理
 void MotorMove::zAxisThreadSend() {
-	if (zAxis_steps < 0) {
-		return ;
-	}
 	std::thread([&] {
 		USB1020_InitLVDV(hDevice, &DL, &LC);
 		USB1020_StartLVDV(hDevice, LC.AxisNum);
@@ -330,14 +327,9 @@ void MotorMove::zAxisThreadSend() {
 		}
 		emit zAxisLoopMoveComplate();
 		LC.Direction = 1;
-		LC.nPulseNum = zAxis_pulse;
-		
-		--zAxis_steps;//步长减一
-		if (zAxis_steps == 0) {//切换方向，下一次回原点
-			LC.Direction = 0;
-			LC.nPulseNum = zAxis_pulse * zAxis_half_steps;
-		}
+		LC.nPulseNum = zAxisPulse;
 		}).detach();
+
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////

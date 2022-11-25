@@ -86,9 +86,8 @@ private:
     int nums_of_axis = 0;
 
     ////////////////z轴使用////////////////////////////
-    int zAxis_pulse = 0;
-    int zAxis_steps = 0;//一节
-    int zAxis_half_steps = 0;//一半
+    int zAxisPulse = 0;
+    int zAxisSteps = 0;
     ////////////////xy轴使用///////////////////////////
     int xLength = 0;
     int yWidth = 0;
