@@ -407,6 +407,7 @@ void MotorMove::xyAxisThreadSend() {
 
 //输出当前逻辑位置和实际位置，如果有的话
 void MotorMove::showCurrentLocation() {
+	
 	std::cout << "x轴当前逻辑位置：" << USB1020_ReadLP(hDevice, USB1020_XAXIS) << std::endl;
 	std::cout << "x轴当前实际位置：" << USB1020_ReadEP(hDevice, USB1020_XAXIS) << std::endl;
 
