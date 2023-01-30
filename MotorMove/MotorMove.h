@@ -63,7 +63,7 @@ signals:
     void zAxisLoopMoveComplate();//形参就是第多少次（或者说第多少步）
     void xyAxisMoveComplate();//形参就是当前位置
     void startMeasure();
-
+    void createError();
 public slots:
     void changeChearPointValue(double value);//改变清晰点的值,将value设置为要改变成的值
 

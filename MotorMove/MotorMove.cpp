@@ -6,7 +6,9 @@
 MotorMove::MotorMove(QObject* parent)
 {
 	hDevice = USB1020_CreateDevice(0);
-
+	if (hDevice == INVALID_HANDLE_VALUE) {
+		emit createError();
+	}
 	USB1020_PulseOutMode(hDevice,USB1020_XAXIS, USB1020_CPDIR, 0, 0);
 	USB1020_PulseOutMode(hDevice,USB1020_YAXIS, USB1020_CPDIR, 0, 0);
 	USB1020_PulseOutMode(hDevice,USB1020_ZAXIS, USB1020_CPDIR, 0, 0);
@@ -407,6 +409,7 @@ void MotorMove::xyAxisThreadSend() {
 
 //输出当前逻辑位置和实际位置，如果有的话
 void MotorMove::showCurrentLocation() {
+	
 	std::cout << "x轴当前逻辑位置：" << USB1020_ReadLP(hDevice, USB1020_XAXIS) << std::endl;
 	std::cout << "x轴当前实际位置：" << USB1020_ReadEP(hDevice, USB1020_XAXIS) << std::endl;
 
