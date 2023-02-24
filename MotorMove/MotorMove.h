@@ -64,8 +64,11 @@ signals:
     void xyAxisMoveComplate();//形参就是当前位置
     void startMeasure();
     void createError();
+
+    void arrivedBounry();
 public slots:
     void changeChearPointValue(double value);//改变清晰点的值,将value设置为要改变成的值
+    double bounryMove(double lower_bounry, double higher_bounry);//在两个边界之间移动,要在获取了当前位置调用
 
 private:
     //设备，公共参数结构体等
@@ -79,6 +82,10 @@ private:
 
     USB1020_PARA_InterpolationAxis IA;
 
+    //用指针声明对象
+    USB1020_PARA_DataList* DL1=new USB1020_PARA_DataList();
+    USB1020_PARA_LCData* LC1 = new USB1020_PARA_LCData();
+    USB1020_PARA_LineData* LD1 = new USB1020_PARA_LineData();
     /////////////////////////自定义的私有变量////////////////////////////////
     int x_axis = 0;
     int y_axis = 0;
@@ -97,10 +104,12 @@ private:
     int xyTimes = 1;
     int yCount = 0;//用于切换方向
     /////////////////////////////////////////////////////////
-
     double clear_point_value=0;
+    double now_location = 0;//现在的位置
+    //////////////////////////////////////以下为私有函数，由公有函数调用
+    //基本参数设置
+    void setBaseValue();
 
-    //以下为私有函数，由公有函数调用
 
     //1.功能性函数，前进后退等
     //前进 function设为1

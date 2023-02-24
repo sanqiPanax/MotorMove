@@ -12,6 +12,8 @@ MotorMove::MotorMove(QObject* parent)
 	USB1020_PulseOutMode(hDevice,USB1020_XAXIS, USB1020_CPDIR, 0, 0);
 	USB1020_PulseOutMode(hDevice,USB1020_YAXIS, USB1020_CPDIR, 0, 0);
 	USB1020_PulseOutMode(hDevice,USB1020_ZAXIS, USB1020_CPDIR, 0, 0);
+
+	setBaseValue();//基本参数设置
 }
 MotorMove::~MotorMove() {
 	
@@ -480,4 +482,49 @@ void MotorMove::moveToMostClearPoint(int large_range, int small_range) {
 		LC.Direction = count;
 		if (time > 1000)break;
 	}
+}
+/////////////////////////////////槽函数/////////////////////////
+double MotorMove::bounryMove(double lower_bounry, double higer_bounry) {
+	if (now_location < lower_bounry || now_location>higer_bounry) {
+		return now_location;
+	}
+	basedMove(4,3,0);//设置z轴当前位置为0点
+
+	LC1->AxisNum = USB1020_ZAXIS;
+	std::thread([&]{
+		LC1->Direction = 1;//随意设置一个方向
+		LC1->nPulseNum = 100000;//之后靠急停来停止
+		USB1020_InitLVDV(hDevice,DL1, LC1);
+		USB1020_StartLVDV(hDevice, LC1->AxisNum);
+		//不停检测当前位置，当超过边界后，就立即停止。
+		while (now_location > lower_bounry && now_location < higer_bounry) {
+			
+		}
+		USB1020_InstStop(hDevice, USB1020_ZAXIS);//z轴急停
+		emit arrivedBounry();//到达边界的信号
+		LC1->Direction = 0;
+		LC1->nPulseNum = 100000;
+		USB1020_InitLVDV(hDevice, DL1, LC1);
+		USB1020_StartLVDV(hDevice, LC1->AxisNum);
+		while (now_location > lower_bounry && now_location < higer_bounry) {//这里可能有些问题
+
+		}
+		emit arrivedBounry();//到达边界的信号
+		basedMove(4, 4, 0);
+		}).detach();
+	
+}
+
+/////////////////////////////私有函数//////////////////////////////////////
+void MotorMove::setBaseValue() {
+	//先设置运动参数
+	LC1->LV_DV = USB1020_DV;
+	LC1->PulseMode = USB1020_CPDIR;
+	LC1->Line_Curve = USB1020_LINE;
+
+	DL1->Multiple = 10;
+	DL1->Acceleration = 4000;
+	DL1->Deceleration = 4000;
+	DL1->StartSpeed = 2000;
+	DL1->DriveSpeed = 8000;
 }
