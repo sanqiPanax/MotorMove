@@ -74,6 +74,7 @@ signals:
 
     void updateValue();
     void changeChearPointValue(double mtf_value);
+    void showNowLocation(double xAxisLocation,double yAxisLocation,double zAxisLocation);
 
 public slots:
     void bounryMove(double journey);//在两个边界之间移动,要在获取了当前位置调用

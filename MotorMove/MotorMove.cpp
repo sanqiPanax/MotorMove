@@ -290,6 +290,7 @@ void MotorMove::basedThreadSend() {
 		}
 		//好像没有必要，将原本传入的全部传回即可
 		emit basedMoveComplate();
+		emit showNowLocation(USB1020_ReadLP(hDevice, USB1020_XAXIS), USB1020_ReadLP(hDevice, USB1020_YAXIS), USB1020_ReadEP(hDevice, USB1020_ZAXIS));
 		}).detach();
 }
 /////////////////////////////z轴的循环运动和相关函数///////////////////////////////////////////////
@@ -334,6 +335,7 @@ void MotorMove::zAxisThreadSend() {
 			std::this_thread::sleep_for(std::chrono::milliseconds(5));
 		}
 		emit zAxisLoopMoveComplate();
+		emit showNowLocation(USB1020_ReadLP(hDevice, USB1020_XAXIS), USB1020_ReadLP(hDevice, USB1020_YAXIS), USB1020_ReadEP(hDevice, USB1020_ZAXIS));
 		LC.Direction = 1;
 		LC.nPulseNum = zAxis_pulse;
 
@@ -389,6 +391,7 @@ void MotorMove::xyAxisThreadSend() {
 			std::this_thread::sleep_for(std::chrono::milliseconds(20));
 		}
 		emit xyAxisMoveComplate();
+		emit showNowLocation(USB1020_ReadLP(hDevice, USB1020_XAXIS), USB1020_ReadLP(hDevice, USB1020_YAXIS), USB1020_ReadEP(hDevice, USB1020_ZAXIS));
 		if (xyTimes == xLength) {
 			LC.AxisNum = USB1020_YAXIS;
 			LC.nPulseNum = yDistance;
@@ -423,6 +426,7 @@ void MotorMove::showCurrentLocation() {
 
 	qDebug() << "zAxisLogicLocation：：" << USB1020_ReadLP(hDevice, USB1020_ZAXIS) << endl;
 	qDebug() << "zAxisRealLocation：" << USB1020_ReadEP(hDevice, USB1020_ZAXIS) << endl;
+	
 }
 //改变全局变量clear_value的值
 void MotorMove::getClearValue(double value) {
@@ -469,6 +473,7 @@ void MotorMove::moveToMostClearPoint(double et_threshold, int pulseDistance) {
 		emit updateValue();//更新清晰度
 		while ((pre_value - clear_value) == 0) {
 			emit updateValue();
+			emit showNowLocation(USB1020_ReadLP(hDevice, USB1020_XAXIS), USB1020_ReadLP(hDevice, USB1020_YAXIS), USB1020_ReadEP(hDevice, USB1020_ZAXIS));
 			std::this_thread::sleep_for(std::chrono::milliseconds(10));
 		}
 
@@ -503,7 +508,7 @@ void MotorMove::moveToMostClearPoint(double et_threshold, int pulseDistance) {
 	}
 	//循环结束加个急停，以防撞车
 	USB1020_InstStop(hDevice, LC.AxisNum);
-
+	emit showNowLocation(USB1020_ReadLP(hDevice, USB1020_XAXIS), USB1020_ReadLP(hDevice, USB1020_YAXIS), USB1020_ReadEP(hDevice, USB1020_ZAXIS));
 }
 /////////////////////////////////槽函数/////////////////////////离焦曲线
 void MotorMove::bounryMove(double journey) {
