@@ -5,26 +5,28 @@
 
 MotorMove::MotorMove(QObject* parent)
 {
-	hDevice = USB1020_CreateDevice(0);
-	if (hDevice == INVALID_HANDLE_VALUE) {
-		emit createError();
+	try {
+		hDevice = USB1020_CreateDevice(0);
 	}
-	USB1020_PulseOutMode(hDevice,USB1020_XAXIS, USB1020_CPDIR, 0, 0);
-	USB1020_PulseOutMode(hDevice,USB1020_YAXIS, USB1020_CPDIR, 0, 0);
-	USB1020_PulseOutMode(hDevice,USB1020_ZAXIS, USB1020_CPDIR, 0, 0);
+	catch (const std::string& s) {
+		std::cerr << "Error: " << "设备初始化失败" << std::endl;
+	}
+	USB1020_PulseOutMode(hDevice, USB1020_XAXIS, USB1020_CPDIR, 0, 0);
+	USB1020_PulseOutMode(hDevice, USB1020_YAXIS, USB1020_CPDIR, 0, 0);
+	USB1020_PulseOutMode(hDevice, USB1020_ZAXIS, USB1020_CPDIR, 0, 0);
 
 	setBaseValue();//基本参数设置
 }
 MotorMove::~MotorMove() {
-	
+	USB1020_ReleaseDevice(hDevice);
 }
 
 //基础运动
-void MotorMove::basedMove(int axis,int function,int pulse) {
+void MotorMove::basedMove(int axis, int function, int pulse) {
 	//判断出轴和轴数
 	decadeAxis(axis);
 
-	if (function == 1){
+	if (function == 1) {
 		moveForward(pulse);
 	}
 	if (function == 2) {
@@ -106,7 +108,7 @@ void MotorMove::backToZero() {
 		LC.LV_DV = USB1020_DV;
 		LC.PulseMode = USB1020_CPDIR;
 		LC.Line_Curve = USB1020_LINE;
-		
+
 		DL.Multiple = 10;
 		DL.Acceleration = 4000;
 		DL.Deceleration = 4000;
@@ -290,7 +292,6 @@ void MotorMove::basedThreadSend() {
 		emit basedMoveComplate();
 		}).detach();
 }
-////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////z轴的循环运动和相关函数///////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////开头调用一次zAxisLoopMove，然后开始发送信号给槽函数，接收信号，
@@ -315,13 +316,13 @@ void MotorMove::zAxisLoopMove(int steps, int step_distance) {
 	LC.AxisNum = USB1020_ZAXIS;
 	LC.nPulseNum = zAxis_pulse * zAxis_half_steps;
 	LC.Direction = 0;
-	
+
 	//zAxisThreadSend(1);
 }
 //z轴的信号发送和线程处理
 void MotorMove::zAxisThreadSend() {
 	if (zAxis_steps < 0) {
-		return ;
+		return;
 	}
 	std::thread([&] {
 		USB1020_InitLVDV(hDevice, &DL, &LC);
@@ -330,12 +331,12 @@ void MotorMove::zAxisThreadSend() {
 		speed = USB1020_ReadCV(hDevice, LC.AxisNum);
 		while (speed != 0) {
 			speed = USB1020_ReadCV(hDevice, LC.AxisNum);
-			std::this_thread::sleep_for(std::chrono::milliseconds(20));
+			std::this_thread::sleep_for(std::chrono::milliseconds(5));
 		}
 		emit zAxisLoopMoveComplate();
 		LC.Direction = 1;
 		LC.nPulseNum = zAxis_pulse;
-		
+
 		--zAxis_steps;//步长减一
 		if (zAxis_steps == 0) {//切换方向，下一次回原点
 			LC.Direction = 0;
@@ -369,7 +370,7 @@ void MotorMove::xyAxisMove(int length, int width, int level_distance, int vertic
 	LC.nPulseNum = xDistance;
 
 	yCount = 0;//将上次的清零
-	
+
 }
 ///先执行一次xyAxisMove，然后进入处理图像，发送信号的循环
 //xy轴运动的信号发送
@@ -378,11 +379,11 @@ void MotorMove::xyAxisThreadSend() {
 	std::thread([&] {
 		USB1020_InitLVDV(hDevice, &DL, &LC);
 		USB1020_StartLVDV(hDevice, LC.AxisNum);
-		LONG speed1 = 0,speed2=0;
+		LONG speed1 = 0, speed2 = 0;
 		speed1 = USB1020_ReadCV(hDevice, USB1020_XAXIS);
 		speed2 = USB1020_ReadCV(hDevice, USB1020_YAXIS);
 
-		while (speed1!= 0||speed2!=0) {
+		while (speed1 != 0 || speed2 != 0) {
 			speed1 = USB1020_ReadCV(hDevice, USB1020_XAXIS);
 			speed2 = USB1020_ReadCV(hDevice, USB1020_YAXIS);
 			std::this_thread::sleep_for(std::chrono::milliseconds(20));
@@ -409,25 +410,31 @@ void MotorMove::xyAxisThreadSend() {
 		}).detach();
 }
 
+
+
 //输出当前逻辑位置和实际位置，如果有的话
 void MotorMove::showCurrentLocation() {
-	
-	std::cout << "x轴当前逻辑位置：" << USB1020_ReadLP(hDevice, USB1020_XAXIS) << std::endl;
-	std::cout << "x轴当前实际位置：" << USB1020_ReadEP(hDevice, USB1020_XAXIS) << std::endl;
 
-	std::cout << "y轴当前逻辑位置：" << USB1020_ReadLP(hDevice, USB1020_YAXIS) << std::endl;
-	std::cout << "y轴当前实际位置：" << USB1020_ReadEP(hDevice, USB1020_YAXIS) << std::endl;
+	qDebug() << "xAxisLogicLocation：" << USB1020_ReadLP(hDevice, USB1020_XAXIS) << endl;
+	qDebug() << "xAxisRealLocation：" << USB1020_ReadEP(hDevice, USB1020_XAXIS) << endl;
 
-	std::cout << "z轴当前逻辑位置：" << USB1020_ReadLP(hDevice, USB1020_ZAXIS) << std::endl;
-	std::cout << "z轴当前实际位置：" << USB1020_ReadEP(hDevice, USB1020_ZAXIS) << std::endl;
+	qDebug() << "yAxisLogicLocation：" << USB1020_ReadLP(hDevice, USB1020_YAXIS) << endl;
+	qDebug() << "yAxisRealLocation：" << USB1020_ReadEP(hDevice, USB1020_YAXIS) << endl;
+
+	qDebug() << "zAxisLogicLocation：：" << USB1020_ReadLP(hDevice, USB1020_ZAXIS) << endl;
+	qDebug() << "zAxisRealLocation：" << USB1020_ReadEP(hDevice, USB1020_ZAXIS) << endl;
 }
-//改变全局变量clear_point_value的值
-void MotorMove::changeChearPointValue(double value) {
-	clear_point_value = value;
+//改变全局变量clear_value的值
+void MotorMove::getClearValue(double value) {
+	clear_value = value;
+}
+void MotorMove::etStop()
+{
+	et_stop = true;
 }
 //移动到最清晰的位置
-void MotorMove::moveToMostClearPoint(int large_range, int small_range) {
-	emit startMeasure();//让摄像头开始测量
+void MotorMove::moveToMostClearPoint(double et_threshold, int pulseDistance) {
+	if (pulseDistance > 5000) return;
 	//先设置运动参数
 	LC.LV_DV = USB1020_DV;
 	LC.PulseMode = USB1020_CPDIR;
@@ -437,82 +444,113 @@ void MotorMove::moveToMostClearPoint(int large_range, int small_range) {
 	DL.Deceleration = 4000;
 	DL.StartSpeed = 2000;
 	DL.DriveSpeed = 8000;
-	
 	LC.AxisNum = USB1020_ZAXIS;
-	LC.nPulseNum = 10;
-	bool count = true;
-	LC.Direction = count;
-	int time = 1;//在一个地方循环过多次就中止
 
-	double pre_value = clear_point_value;
-	double now_value = clear_point_value;
-	while (clear_point_value < large_range) {
-		pre_value = now_value;
+	/// <summary>
+	/// /上面不需要管/////////////////////////////////////////
+	/// </summary>
+	/// <param name="pulseDistance"></param>
+
+	et_stop = false;
+	std::atomic_bool direct_right = 0;
+	emit updateValue();//获得清晰值
+
+	LC.nPulseNum = pulseDistance;//初始步长
+	LC.Direction = USB1020_PDIRECTION;//初始方向默认为正
+	int pre_direction = LC.Direction;
+
+	double pre_value = 0, begin_value = clear_value;
+	while (clear_value < et_threshold && clear_value>10) {//
+		pre_value = clear_value;
 		USB1020_InitLVDV(hDevice, &DL, &LC);
 		USB1020_StartLVDV(hDevice, LC.AxisNum);
-		//时间
-		now_value = clear_point_value;
-		//std::cout << USB1020_ReadLP(hDevice, USB1020_ZAXIS)<<std::endl;
-		if (now_value < pre_value) {
-			count = !count;
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		speedCheck();//调用速度检查函数，速度为0后，会继续执行
+		emit updateValue();//更新清晰度
+		while ((pre_value - clear_value) == 0) {
+			emit updateValue();
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
 		}
-		else if (now_value == pre_value) {
-			count = !count;
-			++time;
+
+		if (abs((pre_value - clear_value) < 2)) {
+			LC.nPulseNum = pulseDistance * 4;
 		}
-		LC.Direction = count;
-		if (time > 1000)break;
+		if (clear_value == 0) {//情况1：可能跑出界的情况 此时先回到原位置，然后步长减半，继续走
+			LC.Direction = (pre_direction == USB1020_MDIRECTION) ? USB1020_PDIRECTION : USB1020_MDIRECTION;//方向反向
+			pre_direction = LC.Direction;
+			USB1020_InitLVDV(hDevice, &DL, &LC);
+			USB1020_StartLVDV(hDevice, LC.AxisNum);
+			speedCheck();//已回到原位置
+			LC.Direction = (pre_direction == USB1020_MDIRECTION) ? USB1020_PDIRECTION : USB1020_MDIRECTION;//方向反向
+			pre_direction = LC.Direction;
+
+			LC.nPulseNum /= 2;//步长减半
+		}
+		else if ((begin_value - clear_value) > 2) {//清晰度反而减小了，说明可能走反了,只需反个向就好
+			LC.nPulseNum = pulseDistance;
+			LC.Direction = USB1020_MDIRECTION;//方向反向
+			pre_direction = LC.Direction;
+			if (direct_right == true) break;
+		}
+		else if ((begin_value - clear_value) < -2) {//清晰度变大了，说明可能走对了
+			direct_right = true;
+			//LC.nPulseNum = pulseDistance;
+			//LC.nPulseNum -= 2;
+		}
+		//if (abs(clear_value - et_threshold) < 3) LC.nPulseNum = pulseDistance / 2;
+		if (LC.nPulseNum >= pulseDistance * 150) break;
+		if (et_stop == true) break;
 	}
-	LC.nPulseNum = 5;
-	time = 1;
-	while (clear_point_value< small_range) {
-		pre_value = now_value;
-		USB1020_InitLVDV(hDevice, &DL, &LC);
-		USB1020_StartLVDV(hDevice, LC.AxisNum);
-		//时间
-		now_value = clear_point_value;
-		//std::cout << USB1020_ReadLP(hDevice, USB1020_ZAXIS) << std::endl;
-		if (now_value < pre_value) {
-			count = !count;
-		}
-		else if (now_value == pre_value) {
-			count = !count;
-			++time;
-		}
-		LC.Direction = count;
-		if (time > 1000)break;
-	}
+	//循环结束加个急停，以防撞车
+	USB1020_InstStop(hDevice, LC.AxisNum);
+
 }
-/////////////////////////////////槽函数/////////////////////////
-double MotorMove::bounryMove(double lower_bounry, double higer_bounry) {
-	if (now_location < lower_bounry || now_location>higer_bounry) {
-		return now_location;
-	}
-	basedMove(4,3,0);//设置z轴当前位置为0点
+/////////////////////////////////槽函数/////////////////////////离焦曲线
+void MotorMove::bounryMove(double journey) {
 
-	LC1->AxisNum = USB1020_ZAXIS;
-	std::thread([&]{
-		LC1->Direction = 1;//随意设置一个方向
-		LC1->nPulseNum = 100000;//之后靠急停来停止
-		USB1020_InitLVDV(hDevice,DL1, LC1);
-		USB1020_StartLVDV(hDevice, LC1->AxisNum);
-		//不停检测当前位置，当超过边界后，就立即停止。
-		while (now_location > lower_bounry && now_location < higer_bounry) {
-			
-		}
-		USB1020_InstStop(hDevice, USB1020_ZAXIS);//z轴急停
-		emit arrivedBounry();//到达边界的信号
-		LC1->Direction = 0;
-		LC1->nPulseNum = 100000;
-		USB1020_InitLVDV(hDevice, DL1, LC1);
-		USB1020_StartLVDV(hDevice, LC1->AxisNum);
-		while (now_location > lower_bounry && now_location < higer_bounry) {//这里可能有些问题
+	//if (now_location<lower_bounry || now_location>higer_bounry)return now_location;
+	LC.LV_DV = USB1020_DV;
+	LC.PulseMode = USB1020_CPDIR;
+	LC.Line_Curve = USB1020_LINE;
 
+	DL.Multiple = 3;
+	DL.Acceleration = 4000;
+	DL.Deceleration = 4000;
+	DL.StartSpeed = 1000;
+	DL.DriveSpeed = 6000;
+	LC.AxisNum = USB1020_ZAXIS;
+	std::thread([&] {
+		LC.Direction = 1;
+		LC.nPulseNum = journey / 0.16 / 2;//脉冲大小为两者之差
+		USB1020_InitLVDV(hDevice, &DL, &LC);
+		USB1020_StartLVDV(hDevice, LC.AxisNum);
+		long speed = USB1020_ReadCV(hDevice, LC.AxisNum);//读取当前速度
+		while (speed != 0) {
+			speed = USB1020_ReadCV(hDevice, LC.AxisNum);//不停读取速度知道停下来
 		}
-		emit arrivedBounry();//到达边界的信号
-		basedMove(4, 4, 0);
+		emit arrivedBounryBegin();//到达其中一个边界
+
+		LC.Direction = 0;
+		LC.nPulseNum = journey / 0.16;
+		USB1020_InitLVDV(hDevice, &DL, &LC);
+		USB1020_StartLVDV(hDevice, LC.AxisNum);
+		speed = USB1020_ReadCV(hDevice, LC.AxisNum);
+		while (speed != 0) {
+			speed = USB1020_ReadCV(hDevice, LC.AxisNum);//不停读取速度知道停下来
+		}
+		emit arrivedBounryEnd();//到达另一个边界
+
+		//回到之前的点
+		LC.Direction = 1;
+		LC.nPulseNum = journey / 0.16 / 2;
+		USB1020_InitLVDV(hDevice, &DL, &LC);
+		USB1020_StartLVDV(hDevice, LC.AxisNum);
+		speed = USB1020_ReadCV(hDevice, LC.AxisNum);
+		while (speed != 0) {
+			speed = USB1020_ReadCV(hDevice, LC.AxisNum);//不停读取速度知道停下来
+		}
 		}).detach();
-	
+
 }
 
 /////////////////////////////私有函数//////////////////////////////////////
@@ -522,9 +560,17 @@ void MotorMove::setBaseValue() {
 	LC1->PulseMode = USB1020_CPDIR;
 	LC1->Line_Curve = USB1020_LINE;
 
-	DL1->Multiple = 10;
+	DL1->Multiple = 3;
 	DL1->Acceleration = 4000;
 	DL1->Deceleration = 4000;
-	DL1->StartSpeed = 2000;
-	DL1->DriveSpeed = 8000;
+	DL1->StartSpeed = 1000;
+	DL1->DriveSpeed = 6000;
+}
+void MotorMove::speedCheck() {
+	LONG speed = USB1020_ReadCV(hDevice, LC.Direction);
+	while (1) {
+		speed = USB1020_ReadCV(hDevice, LC.Direction);
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		if (speed == 0)break;
+	}
 }
