@@ -7,20 +7,6 @@
 #include <thread>
 #include <QDebug>
 
-//const int XAXIS = 0b00000001;
-//const int YAXIS = 0b00000010;
-//const int ZAXIS = 0b00000100;
-//
-//const int XYAXIS = 0b00000011;
-//const int XZAXIS = 0b00000101;
-//const int YZAXIS = 0b00000110;
-//const int XYZAXIS = 0b00000111;
-//
-//const int FORWARD = 1;
-//const int BACK = 2;
-//const int SETZERO = 3;
-//const int BACKZERO = 4;
-
 #define XAXIS 0b00000001
 #define YAXIS 0b00000010
 #define ZAXIS 0b00000100
@@ -61,6 +47,9 @@ public:
     //void moveToMostClearPoint(int large_range,int small_range);
     void moveToMostClearPoint(double et_threshold, int pulseDistance);
 
+    //让xy移动到边界，和“弓”型运动的方向相反
+    void moveToBorder(double x_axis_back,double y_axis_back);
+
 signals:
     void basedMoveComplate();//基础运动完成信号；将轴二进制数发回
     void zAxisLoopMoveComplate();//形参就是第多少次（或者说第多少步）
@@ -74,8 +63,9 @@ signals:
 
     void updateValue();
     void changeChearPointValue(double mtf_value);
-    void showNowLocation(double xAxisLocation,double yAxisLocation,double zAxisLocation);
+    void showNowLocation(double xAxisLocation,double yAxisLocation,double zAxisLocation);//发送当前位置的信号
 
+    
 public slots:
     void bounryMove(double journey);//在两个边界之间移动,要在获取了当前位置调用
 

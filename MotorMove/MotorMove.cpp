@@ -11,9 +11,15 @@ MotorMove::MotorMove(QObject* parent)
 	catch (const std::string& s) {
 		std::cerr << "Error: " << "设备初始化失败" << std::endl;
 	}
+	//设置脉冲输出方式
 	USB1020_PulseOutMode(hDevice, USB1020_XAXIS, USB1020_CPDIR, 0, 0);
 	USB1020_PulseOutMode(hDevice, USB1020_YAXIS, USB1020_CPDIR, 0, 0);
 	USB1020_PulseOutMode(hDevice, USB1020_ZAXIS, USB1020_CPDIR, 0, 0);
+
+	//设置硬件限位停止有效
+	USB1020_SetMDirLMTEnable(hDevice, USB1020_XAXIS, USB1020_SUDDENSTOP, 0);
+	USB1020_SetMDirLMTEnable(hDevice, USB1020_YAXIS, USB1020_SUDDENSTOP, 0);
+	USB1020_SetMDirLMTEnable(hDevice, USB1020_ZAXIS, USB1020_SUDDENSTOP, 0);
 
 	setBaseValue();//基本参数设置
 }
@@ -556,6 +562,51 @@ void MotorMove::bounryMove(double journey) {
 		}
 		}).detach();
 
+}
+//走到xy轴最极限位置,然后在走回来
+void MotorMove::moveToBorder(double x_axis_back, double y_axis_back) {
+	std::thread([&] {
+		IA.Axis1 = USB1020_XAXIS;
+		IA.Axis2 = USB1020_YAXIS;
+		LD.Line_Curve = USB1020_LINE;
+
+		LD.ConstantSpeed = 0;
+		DL.Multiple = 1;
+		DL.Acceleration = 4000;
+		DL.AccIncRate = 1000;
+		DL.StartSpeed = 1000;
+		DL.DriveSpeed = 5000;
+
+		LD.n1AxisPulseNum = 50000;
+		LD.n2AxisPulseNum = 50000;
+		USB1020_InitLineInterpolation_2D(hDevice, &DL, &IA, &LD);
+		USB1020_StartBitInterpolation_2D(hDevice);
+
+		LONG speed1 = 0, speed2 = 0;
+		speed1 = USB1020_ReadCV(hDevice, USB1020_XAXIS);
+		speed2 = USB1020_ReadCV(hDevice, USB1020_YAXIS);
+
+		while (speed1 != 0 || speed2 != 0) {
+			speed1 = USB1020_ReadCV(hDevice, USB1020_XAXIS);
+			speed2 = USB1020_ReadCV(hDevice, USB1020_YAXIS);
+			std::this_thread::sleep_for(std::chrono::milliseconds(20));
+		}
+		//这里应该将位置设置好，之后走到位置后也将位置设置好
+		//走到极限后根据参数往回走
+		LD.n1AxisPulseNum = x_axis_back;
+		LD.n2AxisPulseNum = y_axis_back;
+		USB1020_InitLineInterpolation_2D(hDevice, &DL, &IA, &LD);
+		USB1020_StartBitInterpolation_2D(hDevice);
+
+		speed1 = USB1020_ReadCV(hDevice, USB1020_XAXIS);
+		speed2 = USB1020_ReadCV(hDevice, USB1020_YAXIS);
+		while (speed1 != 0 || speed2 != 0) {
+			speed1 = USB1020_ReadCV(hDevice, USB1020_XAXIS);
+			speed2 = USB1020_ReadCV(hDevice, USB1020_YAXIS);
+			std::this_thread::sleep_for(std::chrono::milliseconds(20));
+		}
+		emit showNowLocation(USB1020_ReadCV(hDevice, USB1020_XAXIS), USB1020_ReadCV(hDevice, USB1020_YAXIS), USB1020_ReadCV(hDevice, USB1020_ZAXIS));
+		}).detach();
 }
 
 /////////////////////////////私有函数//////////////////////////////////////
