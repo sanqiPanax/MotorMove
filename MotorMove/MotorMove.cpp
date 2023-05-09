@@ -356,7 +356,7 @@ void MotorMove::zAxisThreadSend() {
 //////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////xy的“弓”型运动///////////////////////////////////////////
 
-void MotorMove::xyAxisMove(int length, int width, int level_distance, int vertical_distance) {
+void MotorMove::xyAxisMove(int length, int width, double level_distance, double vertical_distance) {
 	xLength = length;
 	yWidth = width;
 	xDistance = level_distance;

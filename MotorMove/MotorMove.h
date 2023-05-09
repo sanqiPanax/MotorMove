@@ -34,7 +34,7 @@ public:
     // （形参：步数（4步是3个位置，8步是5个位置，12步是7个位置),步距（每步多长）），
     void zAxisLoopMove(int steps, int step_distance);
     // （形参：矩阵的长宽（每行多少孔，每列多少个孔），水平孔距（两个相邻孔之间的距离），垂直孔距） xy插补运动，
-    void xyAxisMove(int length, int width, int level_distance, int vertical_distance);
+    void xyAxisMove(int length, int width, double level_distance, double vertical_distance);
     //z轴的信号发送和线程处理
     void zAxisThreadSend();
     //xy轴的信号发送和线程处理
@@ -47,7 +47,7 @@ public:
     //void moveToMostClearPoint(int large_range,int small_range);
     void moveToMostClearPoint(double et_threshold, int pulseDistance);
 
-    //让xy移动到边界，和“弓”型运动的方向相反
+    //让xy移动到边界，和“弓”型运动的方向相反 
     void moveToBorder(double x_axis_back,double y_axis_back);
 
 signals:
@@ -88,7 +88,7 @@ private:
     USB1020_PARA_DataList* DL1 = new USB1020_PARA_DataList();
     USB1020_PARA_LCData* LC1 = new USB1020_PARA_LCData();
     USB1020_PARA_LineData* LD1 = new USB1020_PARA_LineData();
-    /////////////////////////自定义的私有变量////////////////////////////////
+    ////////////////////自定义的私有变量////////////////
     int x_axis = 0;
     int y_axis = 0;
     int z_axis = 0;
