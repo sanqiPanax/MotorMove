@@ -40,15 +40,19 @@ public:
     //xy轴的信号发送和线程处理
     //xy轴“弓”型运动的信号发送和线程处理
     void xyAxisThreadSend();
-    //输出当前位置
-    void showCurrentLocation();
 
     //移动z轴，走到最清晰的点
     //void moveToMostClearPoint(int large_range,int small_range);
     void moveToMostClearPoint(double et_threshold, int pulseDistance);
 
     //让xy移动到边界，和“弓”型运动的方向相反 
-    void moveToBorder(double x_axis_back,double y_axis_back);
+    void moveToBorder(double x_axis_back, double y_axis_back);
+
+    //让z轴走到极限，然后走到想走到的位置
+    void locationSet(double length);
+
+    //不停地读取xyz当前的位置，每隔一段时间发送一次信号  (2023.5.22)
+    void readNowLocation();
 
 signals:
     void basedMoveComplate();//基础运动完成信号；将轴二进制数发回
@@ -63,9 +67,10 @@ signals:
 
     void updateValue();
     void changeChearPointValue(double mtf_value);
-    void showNowLocation(double xAxisLocation,double yAxisLocation,double zAxisLocation);//发送当前位置的信号
+    void showNowLocation(double xAxisLocation, double yAxisLocation, double zAxisLocation);//发送当前位置的信号
 
-    
+  
+
 public slots:
     void bounryMove(double journey);//在两个边界之间移动,要在获取了当前位置调用
 
