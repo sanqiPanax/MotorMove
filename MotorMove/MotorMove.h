@@ -6,6 +6,7 @@
 #include "USB1020.h"
 #include <thread>
 #include <QDebug>
+#include <QMessageBox>
 
 #define XAXIS 0b00000001
 #define YAXIS 0b00000010
@@ -89,10 +90,7 @@ private:
 
     USB1020_PARA_InterpolationAxis IA;
 
-    //用指针声明对象
-    USB1020_PARA_DataList* DL1 = new USB1020_PARA_DataList();
-    USB1020_PARA_LCData* LC1 = new USB1020_PARA_LCData();
-    USB1020_PARA_LineData* LD1 = new USB1020_PARA_LineData();
+
     ////////////////////自定义的私有变量////////////////
     int x_axis = 0;
     int y_axis = 0;
@@ -116,9 +114,9 @@ private:
     ///////////////自动调焦使用/////////////////
     std::atomic_bool et_stop = false;
 
+    ///////////////位置监测线程的控制/////////////////
+    std::atomic_bool pos_surveil = false,pos_destroyed = false;
     //////////////////////////////////////以下为私有函数，由公有函数调用
-    //基本参数设置
-    void setBaseValue();
 
 
 
